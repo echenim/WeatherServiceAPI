@@ -10,9 +10,12 @@ builder.Services.AddSwaggerGen();
 
 
 
-builder.Services.AddSingleton<WeatherService>(
-    new WeatherService("33aef3904be8e72af56ac40cf627b9e6")
-    );
+// builder.Services.AddSingleton<WeatherService>(
+//     new WeatherService("33aef3904be8e72af56ac40cf627b9e6")
+//     );
+
+// Register WeatherService with HttpClient
+builder.Services.AddHttpClient<WeatherService>();
 
 var app = builder.Build();
 
