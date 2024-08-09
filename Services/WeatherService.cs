@@ -1,15 +1,27 @@
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using System.Collections.Generic;
 
-
+/// <summary>
+/// Provides weather-related services by interfacing with the OpenWeatherMap API.
+/// </summary>
 public class WeatherService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<WeatherService> _logger;
     private readonly string _apiKey;
 
+    /// <summary>
+    /// Initializes a new instance of the WeatherService class.
+    /// </summary>
+    /// <param name="httpClient">The HTTP client used to make requests to the OpenWeatherMap API.</param>
+    /// <param name="config">Configuration that contains API key and base URL settings.</param>
+    /// <param name="logger">Logger for capturing runtime information and errors.</param>
     public WeatherService(HttpClient httpClient, IConfiguration config, ILogger<WeatherService> logger)
     {
         _httpClient = httpClient;
@@ -18,16 +30,18 @@ public class WeatherService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Retrieves the current weather information for a given latitude and longitude.
+    /// </summary>
+    /// <param name="lat">Latitude of the location.</param>
+    /// <param name="lon">Longitude of the location.</param>
+    /// <returns>A string describing the weather condition and temperature.</returns>
     public async Task<string> GetCurrentWeather(double lat, double lon)
     {
-
         try
         {
             var endpoint = $"weather?lat={lat}&lon={lon}&appid={_apiKey}&units=metric";
-            var parameters = new Dictionary<string, string>{
-                {"lat", lat.ToString()},
-                {"lon", lon.ToString()}
-            };
+            var parameters = new Dictionary<string, string> { { "lat", lat.ToString() }, { "lon", lon.ToString() } };
 
             var response = await _httpClient.GetAsync(endpoint);
             if (!response.IsSuccessStatusCode)
@@ -44,7 +58,6 @@ public class WeatherService
             string temperatureDescription = CategorizeTemperature(tempFahrenheit);
 
             return $"Weather: {weather.weather[0].main}, Temperature: {tempFahrenheit}°F | {temperatureDescription}";
-
         }
         catch (HttpRequestException ex)
         {
@@ -58,12 +71,21 @@ public class WeatherService
         }
     }
 
-
+    /// <summary>
+    /// Converts Celsius to Fahrenheit.
+    /// </summary>
+    /// <param name="celsius">Temperature in Celsius.</param>
+    /// <returns>Temperature in Fahrenheit.</returns>
     private static double CelsiusToFahrenheit(double celsius)
     {
         return (celsius * 9 / 5) + 32;
     }
 
+    /// <summary>
+    /// Categorizes temperature into human-readable formats.
+    /// </summary>
+    /// <param name="tempFahrenheit">Temperature in Fahrenheit.</param>
+    /// <returns>A string that categorizes the temperature.</returns>
     private static string CategorizeTemperature(double tempFahrenheit)
     {
         if (tempFahrenheit <= 32) return "Freezing";
@@ -75,6 +97,4 @@ public class WeatherService
         if (tempFahrenheit <= 100) return "Very Hot";
         return "Extreme Heat";
     }
-
-
 }
