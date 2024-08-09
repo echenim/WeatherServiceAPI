@@ -98,7 +98,7 @@ To set up and run the project locally:
 
 ```bash
 git git@github.com:echenim/WeatherServiceAPIs.git
-cd WeatherDataRetrievalSystem
+cd WeatherServiceAPIs
 # Follow specific setup instructions for dependencies, environment variables, etc.
 dotnet run
 ```
