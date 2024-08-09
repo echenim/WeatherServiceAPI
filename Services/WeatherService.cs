@@ -7,28 +7,55 @@ using Newtonsoft.Json;
 public class WeatherService
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<WeatherService> _logger;
     private readonly string _apiKey;
 
-    public WeatherService(HttpClient httpClient, IConfiguration config)
+    public WeatherService(HttpClient httpClient, IConfiguration config, ILogger<WeatherService> logger)
     {
         _httpClient = httpClient;
         _httpClient.BaseAddress = new Uri(config["OpenWeatherSettings:BaseUrl"]);
         _apiKey = config["OpenWeatherSettings:ApiKey"];
+        _logger = logger;
     }
 
     public async Task<string> GetCurrentWeather(double lat, double lon)
     {
-        var response = await _httpClient.GetAsync($"weather?lat={lat}&lon={lon}&appid={_apiKey}&units=metric");
-        response.EnsureSuccessStatusCode();
 
-        var content = await response.Content.ReadAsStringAsync();
-        dynamic weather = JsonConvert.DeserializeObject(content);
+        try
+        {
+            var endpoint = $"weather?lat={lat}&lon={lon}&appid={_apiKey}&units=metric";
+            var parameters = new Dictionary<string, string>{
+                {"lat", lat.ToString()},
+                {"lon", lon.ToString()}
+            };
 
-        double tempCelsius = weather.main.temp;
-        double tempFahrenheit = CelsiusToFahrenheit(tempCelsius);
-        string temperatureDescription = CategorizeTemperature(tempFahrenheit);
+            var response = await _httpClient.GetAsync(endpoint);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"Weather API returned {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+                throw new WeatherServiceException("Failed to retrieve weather data.", response.StatusCode, endpoint, parameters);
+            }
 
-        return $"Weather: {weather.weather[0].main}, Temperature: {tempFahrenheit}°F | {temperatureDescription}";
+            var content = await response.Content.ReadAsStringAsync();
+            dynamic weather = JsonConvert.DeserializeObject(content);
+
+            double tempCelsius = weather.main.temp;
+            double tempFahrenheit = CelsiusToFahrenheit(tempCelsius);
+            string temperatureDescription = CategorizeTemperature(tempFahrenheit);
+
+            return $"Weather: {weather.weather[0].main}, Temperature: {tempFahrenheit}°F | {temperatureDescription}";
+
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP request to Weather API failed.");
+            throw new WeatherServiceException("HTTP request failed", HttpStatusCode.ServiceUnavailable, null, null, ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred while fetching weather data.");
+            throw new WeatherServiceException("HTTP request failed", HttpStatusCode.InternalServerError, null, null, ex);
+        }
     }
 
 
