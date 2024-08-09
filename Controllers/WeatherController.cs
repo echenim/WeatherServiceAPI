@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
+using System.Net;
+using Microsoft.Extensions.Logging;
 
 [ApiController]
 [Route("[controller]")]
@@ -26,6 +28,13 @@ public class WeatherController : ControllerBase
                 return StatusCode(500, "Weather data could not be retrieved.");
             }
             return Ok(weather);
+        }
+        catch (WeatherServiceException ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve weather data: {Message}", ex.Message);
+            // Use the StatusCode from the exception if available, otherwise default to 500
+            var statusCode = ex.StatusCode ?? HttpStatusCode.InternalServerError;
+            return StatusCode((int)statusCode, $"An error occurred while retrieving weather data: {ex.Message}");
         }
         catch (Exception ex)
         {
