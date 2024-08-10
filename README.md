@@ -19,7 +19,7 @@ The Weather Data Retrieval System provides real-time weather information based o
   }
 }%%
 
-graph LR;
+graph TD;
     client[("Client<br>(Web Browser or API Client)")]
     weatherController[("WeatherController<br>/api/weather/current")]
     weatherService[("WeatherService")]
