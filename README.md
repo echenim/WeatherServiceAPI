@@ -1,5 +1,7 @@
 # Weather Data Retrieval System
 
+The Weather Data Retrieval System provides real-time weather information based on geographic coordinates. It integrates with the OpenWeather API to fetch current weather conditions and offers a RESTful API endpoint for client applications.
+
 ```mermaid
 %%{
   init: {
@@ -17,88 +19,103 @@
   }
 }%%
 
-graph TD;
-    client[("Client<br>(Web Browser or API Client)")] -->|Request: GET /weather/current?lat=...&lon=...| controller[("WeatherController")]
-    controller -->|Calls| weatherService[("WeatherService")]
-    weatherService -->|HTTP Request| openWeatherAPI[("OpenWeather API")]
-    openWeatherAPI -->|HTTP Response| weatherService
-    weatherService -->|Return Data| controller
-    controller -->|Response: 200 OK with Data| client
+graph LR;
+    client[("Client<br>(Web Browser or API Client)")]
+    weatherController[("WeatherController<br>/api/weather/current")]
+    weatherService[("WeatherService")]
+    openWeatherAPI[("OpenWeather API")]
+    logger[("ILogger<br>(Logging System)")]
+    config[("Configuration<br>(appsettings.json)")]
+    rateLimiter[("Rate Limiting Middleware")]
 
-    subgraph internal["Internal Server Processes"]
-    controller -->|Error Handling| errorHandler[("Error Handling")]
-    errorHandler -->|Log Error| logger[("ILogger")]
-    logger -.->|Write Logs| logStorage[("Log Storage (File, Cloud, etc.)")]
-    errorHandler -->|Response: Error e.g., 500, 429| client
-    end
+    client -->|HTTP GET request| weatherController
+    weatherController -->|Fetch weather| weatherService
+    weatherService -->|API Key & Request| config
+    config -->|API Key| weatherService
+    weatherService -->|HTTP request| openWeatherAPI
+    openWeatherAPI -->|Respond with data| weatherService
+    weatherService -->|Return data| weatherController
+    weatherController -->|Return response| client
+    weatherController -->|Error handling| logger
+    client -->|Initiate requests| rateLimiter
+    rateLimiter -->|Rate limited request| weatherController
 
     classDef default fill:#f9f,stroke:#333,stroke-width:2px;
     classDef api fill:#ccf,stroke:#333,stroke-width:2px;
     classDef storage fill:#ffc,stroke:#333,stroke-width:2px;
     classDef error fill:#f99,stroke:#333,stroke-width:2px;
 
-    class openWeatherAPI api;
-    class logStorage storage;
-    class errorHandler error;
+    class openWeatherAPI,logger,config api;
 
 
 ```
 
+## System Overview
 
-## Overview
-
-The Weather Data Retrieval System provides real-time weather information based on geographical coordinates. It is designed to integrate seamlessly with the OpenWeather API to fetch current weather conditions and expose this information through a RESTful API endpoint.
-
-
-## System Components
-
-- **WeatherController**: Serves as the entry point for client requests, managing HTTP GET requests that include latitude and longitude parameters.
-- **WeatherService**: Handles communication with the OpenWeather API, processes the responses, and returns formatted weather data.
-- **OpenWeather API**: External API providing detailed weather data.
-- **Logging**: Utilizes `ILogger` for logging operations, aiding in debugging and operational monitoring.
-- **Rate Limiting Middleware**: Protects the API from overuse by limiting the number of requests that a client can make within a specified time frame.
-
-## Architecture
-
-This system follows a client-server model with integration of an external API:
-
-- **Client**: Any web browser or API client that sends requests to the system.
-- **Server**: Hosts the WeatherController and WeatherService, processing incoming requests and fetching data from the OpenWeather API.
-- **External API**: The OpenWeather API that provides the actual weather data based on coordinates.
-
-## Data Flow
-
-1. **Client Request**: Initiates with an HTTP GET request specifying latitude and longitude.
-2. **WeatherController**: Receives the request and forwards it to the WeatherService.
-3. **WeatherService**: Contacts the OpenWeather API, retrieves the weather data, and processes it.
-4. **Response**: Sends the processed data back to the WeatherController, which returns it to the client.
-5. **Error Handling**: Captures and logs errors at various stages, returning appropriate responses to the client.
-
-## Error Handling and Logging
-
-Errors are managed through comprehensive logging and specific error-handling mechanisms:
-
-- Network issues or data processing errors within the WeatherService are caught and handled.
-- Errors in the WeatherController are logged and managed, ensuring that the client receives a clear error response.
-
-## Scalability and Performance
-
-- **Statelessness**: The server's stateless nature allows it to handle multiple requests independently.
-- **Rate Limiting**: Prevents server overload by limiting the number of requests a single client can make.
-- **Caching Strategy**: (Future implementation) Could involve caching weather data responses to reduce API calls.
-
-## Security Features
-
-- **API Key Management**: Secure storage and management of API keys to prevent unauthorized access.
-- **Rate Limiting**: Provides a basic layer of security against denial-of-service attacks.
+This system is designed to access weather information via the OpenWeather API and expose this data through a RESTful interface implemented in an ASP.NET Core application. It handles incoming requests, communicates with external services, and provides data responses to clients.
 
 ## Getting Started
 
-To set up and run the project locally:
+### Prerequisites
 
-```bash
-git git@github.com:echenim/WeatherServiceAPIs.git
-cd WeatherServiceAPIs
-# Follow specific setup instructions for dependencies, environment variables, etc.
-dotnet run
-```
+- .NET 8.0 SDK
+- An IDE like Visual Studio or VS Code
+- An API key from OpenWeatherMap
+
+### Configuration
+
+1. **API Key Setup**: Store your OpenWeather API key in your `appsettings.json` file under the `OpenWeatherSettings` section:
+
+    ```json
+    {
+      "OpenWeatherSettings": {
+        "ApiKey": "your_api_key_here",
+        "BaseUrl": "https://api.openweathermap.org/data/2.5/"
+      }
+    }
+    ```
+
+2. **Running the Application**: Open your terminal or command prompt and navigate to the project directory. Run the following commands:
+
+    ```bash
+    dotnet restore
+    dotnet build
+    dotnet run
+    ```
+
+## System Architecture
+
+- **Client**: Initiates requests via HTTP GET with latitude and longitude parameters.
+- **WeatherController**: Manages incoming requests and responses. It interacts with the WeatherService to fetch data.
+- **WeatherService**: Handles communication with the OpenWeather API, parsing and returning data.
+- **OpenWeather API**: External API providing weather data.
+- **Logging**: Utilizes `ILogger` for logging across the application.
+- **Rate Limiting Middleware**: Limits request rates to prevent abuse and ensure service availability.
+
+## Data Flow
+
+1. **Client Request**: The client sends a request to the WeatherController.
+2. **Controller to Service**: The controller passes the request to the WeatherService.
+3. **Service to API**: The WeatherService requests data from OpenWeather API.
+4. **Data Parsing and Response**: The service parses the API response and returns it to the controller, which then sends it back to the client.
+5. **Error Handling**: Errors are logged, and appropriate error messages are returned to the client.
+
+## Error Handling and Logging
+
+- Errors from network issues or data processing are caught and logged.
+- The WeatherController handles exceptions from the WeatherService.
+- Detailed error information is provided to clients appropriately.
+
+## Scalability and Performance
+
+- The system is stateless, allowing it to scale horizontally as needed.
+- Rate limiting protects against excessive requests.
+- Future enhancements could include response caching to reduce dependency on external API calls.
+
+## Security Considerations
+
+- The OpenWeather API key is securely stored in the `appsettings.json` file and accessed via configuration management tools provided by ASP.NET Core.
+
+## Conclusion
+
+This documentation provides a comprehensive overview of the Weather Data Retrieval System designed for efficient, reliable, and scalable access to weather data. The system is built with robust practices to ensure security, performance, and maintainability.
